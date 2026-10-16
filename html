@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Ap dung toan bo chinh sua len file HTML goc cua Tiny.
+Cach dung:  python apply_edits.py goc.html index.html
+"""
+import re, sys
+
+src, dst = sys.argv[1], sys.argv[2]
+s = open(src, encoding="utf-8").read()
+
+def replace_once(old, new, label):
+    global s
+    n = s.count(old)
+    if n != 1:
+        sys.exit(f"[LOI] '{label}': tim thay {n} cho (can dung 1). File goc khac voi file da dung de sua.")
+    s = s.replace(old, new)
+    print("[OK]", label)
+
+# 1. Doi ten: "to la Tiny" -> "to la Phat"
+replace_once('<div id="text-2" class="text-layer">tớ là Tiny</div>',
+             '<div id="text-2" class="text-layer">tớ là Phát</div>',
+             "tớ là Tiny -> tớ là Phát")
+
+# 2. Dr D -> Verity (chu hien thi + chu thich trong code)
+replace_once('Hôm nay tớ nhận lệnh từ Dr D là để...',
+             'Hôm nay tớ nhận lệnh từ Verity là để...',
+             "Dr D -> Verity (chữ hiển thị)")
+replace_once('kể cả cảnh nhận lệnh từ Dr D.',
+             'kể cả cảnh nhận lệnh từ Verity.',
+             "Dr D -> Verity (chú thích)")
+
+# 3. Sua loi ket canh: neu nhac khong phat duoc thi van cho qua canh
+replace_once("        let canClick = true;\n",
+             "        let canClick = true;\n"
+             "        let introGateStart = 0; // mốc thời gian vào cảnh nhận lệnh, dùng cho cơ chế dự phòng khi nhạc không phát\n",
+             "khai báo introGateStart")
+
+replace_once("""                if (clickCount === 2 && (!musicGateClosed || tinySoundtrack.currentTime < MUSIC_HOLD_TIME - .045)) {
+                    showMusicWaitHint();
+                    return;
+                }""",
+"""                if (clickCount === 2 && (!musicGateClosed || tinySoundtrack.currentTime < MUSIC_HOLD_TIME - .045)) {
+                    // Dự phòng: nếu nhạc không phát được (trình duyệt chặn / chưa tải xong / lỗi)
+                    // thì không khoá cảnh vĩnh viễn nữa.
+                    if (!introGateStart) introGateStart = Date.now();
+                    const waited = Date.now() - introGateStart;
+                    const musicStuck = tinySoundtrack.paused || !!tinySoundtrack.error;
+                    if (waited > 12000 || (musicStuck && waited > 3500)) {
+                        musicAllowedPastGate = true;
+                        musicGateClosed = false;
+                        if (musicFadeTimer !== null) { clearInterval(musicFadeTimer); musicFadeTimer = null; }
+                        tinySoundtrack.volume = MUSIC_VOLUME;
+                        startMusicIfAllowed();
+                    } else {
+                        showMusicWaitHint();
+                        return;
+                    }
+                }""", "cơ chế dự phòng khi nhạc không phát")
+
+replace_once("""                else if (clickCount === 1) {
+                    clickCount++;
+                    text2.classList.remove('hien-thi');""",
+"""                else if (clickCount === 1) {
+                    clickCount++;
+                    introGateStart = Date.now();
+                    text2.classList.remove('hien-thi');""", "ghi mốc thời gian vào cảnh 3")
+
+# 4. Xoa 2 dong chu o canh mat trang va canh cua hang
+replace_once('      <h2 class="reality-message">và giúp tớ <span class="reality-pink">bước ra ngoài đời thực</span> được chứ?</h2>\n',
+             '', "xoá dòng 'giúp tớ bước ra ngoài đời thực'")
+
+# 5. Xoa toan bo trang cua hang (section + 2 script rieng)
+a = s.index('<section id="tiny-shop-scene"')
+b = s.index('</section>', a) + len('</section>')
+s = s[:a] + s[b:]
+print("[OK] xoá trang cửa hàng (section)")
+for sid in ("tiny-shop-next-script", "tiny-shop-magical-script"):
+    m = re.search(r'\n?<script id="%s">.*?</script>' % sid, s, re.S)
+    if not m: sys.exit(f"[LOI] khong thay script {sid}")
+    s = s[:m.start()] + s[m.end():]
+    print("[OK] xoá script", sid)
+
+# 6. Doi link chia se (3 cho)
+old, new = "20-10-vuive.kazvndc-edu.workers.dev", "20-10-vuivui.kazvndc-edu.workers.dev"
+print("[OK] đổi link chia sẻ:", s.count(old), "chỗ")
+s = s.replace(old, new)
+
+open(dst, "w", encoding="utf-8").write(s)
+print("Xong ->", dst)
