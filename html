@@ -17,8 +17,8 @@ def replace_once(old, new, label):
 
 # 1. Doi ten: "to la Tiny" -> "to la Phat"
 replace_once('<div id="text-2" class="text-layer">tớ là Tiny</div>',
-             '<div id="text-2" class="text-layer">tớ là Phát</div>',
-             "tớ là Tiny -> tớ là Phát")
+             '<div id="text-2" class="text-layer">tớ là tin</div>',
+             "tớ là Tiny -> tớ là Teien")
 
 # 2. Dr D -> Verity (chu hien thi + chu thich trong code)
 replace_once('Hôm nay tớ nhận lệnh từ Dr D là để...',
@@ -63,26 +63,5 @@ replace_once("""                else if (clickCount === 1) {
                     clickCount++;
                     introGateStart = Date.now();
                     text2.classList.remove('hien-thi');""", "ghi mốc thời gian vào cảnh 3")
-
-# 4. Xoa 2 dong chu o canh mat trang va canh cua hang
-replace_once('      <h2 class="reality-message">và giúp tớ <span class="reality-pink">bước ra ngoài đời thực</span> được chứ?</h2>\n',
-             '', "xoá dòng 'giúp tớ bước ra ngoài đời thực'")
-
-# 5. Xoa toan bo trang cua hang (section + 2 script rieng)
-a = s.index('<section id="tiny-shop-scene"')
-b = s.index('</section>', a) + len('</section>')
-s = s[:a] + s[b:]
-print("[OK] xoá trang cửa hàng (section)")
-for sid in ("tiny-shop-next-script", "tiny-shop-magical-script"):
-    m = re.search(r'\n?<script id="%s">.*?</script>' % sid, s, re.S)
-    if not m: sys.exit(f"[LOI] khong thay script {sid}")
-    s = s[:m.start()] + s[m.end():]
-    print("[OK] xoá script", sid)
-
-# 6. Doi link chia se (3 cho)
-old, new = "20-10-vuive.kazvndc-edu.workers.dev", "20-10-vuivui.kazvndc-edu.workers.dev"
-print("[OK] đổi link chia sẻ:", s.count(old), "chỗ")
-s = s.replace(old, new)
-
 open(dst, "w", encoding="utf-8").write(s)
 print("Xong ->", dst)
